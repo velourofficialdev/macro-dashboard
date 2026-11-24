@@ -32,3 +32,20 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # If the deploy step fails (for example GitHub cannot find the page artifact),
+  # start one fresh run after a short wait. Only a push run retries, and the retry
+  # is a manual-dispatch run, so a second failure never starts a third.
+  retry:
+    needs: deploy
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Wait, then start one fresh run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 60
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
